@@ -1,6 +1,6 @@
 module Fog
-  module Ganeti
-    class Compute
+  module Compute
+    class Ganeti
       class Real
 
         ##

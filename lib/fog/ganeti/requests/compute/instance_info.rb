@@ -1,6 +1,6 @@
 module Fog
-  module Ganeti
-    class Compute
+  module Compute
+    class Ganeti
       class Real
 
         ##
@@ -11,11 +11,24 @@ module Fog
         # The result will be a job id.
 
         def instance_info instance_name, opts = {}
-          request(
+          job_id = request(
             :expects => 200,
             :method  => 'GET',
             :query   => opts.delete(:query),
             :path    => "/2/instances/#{instance_name}/info"
+          )
+          # FIXME: wait gives 403
+          request(
+            :expects => 200,
+            :method  => 'GET',
+            :query   => { :fields => 'opstatus' },
+            :path    => "/2/jobs/#{job_id}/wait"
+          )
+          request(
+            :expects => 200,
+            :method  => 'GET',
+            :query   => {},
+            :path    => "/2/jobs/#{job_id}"
           )
         end
 

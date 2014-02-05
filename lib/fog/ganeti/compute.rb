@@ -1,11 +1,17 @@
+require 'fog/ganeti/core'
+require 'fog/compute'
+
 module Fog
-  module Ganeti
-    class Compute < Fog::Service
+  module Compute
+    class Ganeti < Fog::Service
 
       requires :password
+      requires :username
       requires :host
 
       model_path 'fog/ganeti/models/compute'
+      #model      :server
+      #collection :servers
 
       request_path 'fog/ganeti/requests/compute'
       request :cluster_features
@@ -57,6 +63,9 @@ module Fog
       request :oses_list
 
       class Mock
+        def initialize(options={})
+          Fog::Mock.not_implemented
+        end
       end
 
       class Real
@@ -64,10 +73,12 @@ module Fog
         def initialize(options={})
           require 'json'
           @ganeti_password = options[:password]
+          @ganeti_username = options[:username]
           @host            = options[:host]
           @port            = options[:port]   || 5080
           @scheme          = options[:scheme] || 'https'
-          @connection = Fog::Connection.new("#{@scheme}://#{@host}:#{@port}", options[:persistent])
+          @connection = Fog::Connection.new("#{@scheme}://#{@host}:#{@port}", options[:persistent],
+		 {:ssl_verify_peer => false, :user => @ganeti_username, :password => @ganeti_password})
         end
 
         def reload
@@ -76,9 +87,6 @@ module Fog
 
         def request(params)
           params[:headers] ||= {}
-          params[:headers].merge!({
-            'Authorization' => "Basic #{Base64.encode64(@ganeti_password).delete("\r\n")}"
-          })
           case params[:method]
           when 'DELETE', 'GET', 'HEAD'
             params[:headers]['Accept'] = 'application/json'
@@ -86,10 +94,10 @@ module Fog
             params[:headers]['Content-Type'] = 'application/json'
           end
 
-          response = @connection.request(params.merge!({:host => @host}))
+          response = @connection.request(params)
 
           return response if response.body.empty?
-          (response.body.chomp =~ %r{^\"(\d+)\"}m) ? $1 : JSON.parse(response.body)
+          (response.body.chomp =~ %r{^\"(\d+)\"}m) ? $1 : Fog::JSON.decode(response.body)
         end
 
       end
